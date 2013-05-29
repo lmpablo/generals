@@ -1,5 +1,6 @@
 window.onload = function () {
 	// JQUERY HANDLERS and EVENTS
+	var timer = null;
 
 	$("#chat")
 		.hide();
@@ -161,6 +162,7 @@ window.onload = function () {
 		// start the game
 		generals.gameStarted = true;
 		generals.resetBounds();
+		clearTimeout(timer);
 
 		var pkg = JSON.stringify(game_id);
 
@@ -181,14 +183,12 @@ window.onload = function () {
 
 	// wait until the game's turn goes from 0 (ready turn) to 1 (start p1)
 	function pollGameStart(){
-		setTimeout(function(){
-			$.get(BASE + '/game/get_turn/' + game_id, function(data){
-				if(data === 1){
-					startGame();
-				}
-			});
-			pollGameStart();
-		}, 2000);
+		$.get(BASE + '/game/get_turn/' + game_id, function(data){
+			if(data === 1){
+				startGame();
+			}
+		});		
+		timer = setTimeout(pollGameStart, 2000);
 	}
 
 

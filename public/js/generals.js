@@ -40,6 +40,7 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 
 		// game variables
 		gameGrid = [],
+		enemyGrid = [],
 		playerPieces = [],
 		connected = false,
 		gameStarted = false,
@@ -331,29 +332,55 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 
 			// if the move is completely valid
 			if (!collided && move.valid) {
+				var pkg = new Object(); // json package to be sent over
+				pkg.id = game_id;
 				generals.setMovement(false);
 				$("#message").html("<h6>Waiting for opponent's move.</h6>");
 				
 				// update self-grid
 				piece = gamePieces[playerPieces.indexOf(this)];
-				console.log("++inside dragstart++");
-				console.log(piece);
+				pkg.piece = piece;
+
 				for(var i = 0; i < 9; i++){
 					for(var j = 0; j < 8; j++){
 						if(gameGrid[i][j] === piece) { 
 							origX = i; 
 							origY = j; 
 							gameGrid[i][j] = "_";
+
+							pkg.x0 = i;
+							pkg.y0 = j;
+							pkg.x1 = i;
+							pkg.y1 = j;
 						}
 					}
 				}
-				console.log(origX + ", "+ origY);
-				if(move.change === "+x"){ gameGrid[origX+1][origY] = piece; }
-				else if(move.change === "+y"){ gameGrid[origX][origY+1] = piece; }
-				else if(move.change === "-x"){ gameGrid[origX-1][origY] = piece; }
-				else if(move.change === "-y"){ gameGrid[origX][origY-1] = piece; }
+				
+				if(move.change === "+x"){ 
+					gameGrid[origX+1][origY] = piece; 
+					pkg.x1 = pkg.x0 + 1;
+				}
+				else if(move.change === "+y"){ 
+					gameGrid[origX][origY+1] = piece;
+					pkg.y1 = pkg.y0 + 1; 
+				}
+				else if(move.change === "-x"){ 
+					gameGrid[origX-1][origY] = piece; 
+					pkg.x1 = pkg.x0 - 1;
+				}
+				else if(move.change === "-y"){ 
+					gameGrid[origX][origY-1] = piece;
+					pkg.y1 = pkg.y0 - 1; 
+				}
+				
 				// update enemy's grid
-				socket.emit('turnComplete', move.change, gamePieces[playerPieces.indexOf(this)]);
+				var json = JSON.stringify(pkg);
+
+				// send the changes to the server
+				// check the callback if there was a capture/win-condition is met
+				$.post(BASE + '/game/update_move', json, function(data){
+					console.log(data);
+				});
 			}
 
 			tooltipLayer.draw();
@@ -414,7 +441,7 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 					xPos = coordStartX + (i * H_POS) + (H_POS / 2);
 					yPos = coordStartY + (j * V_POS) + (V_POS / 2);
 					piece = createEnemyPieces(xPos, yPos);
-					gameGrid[i][j] = piece;
+					enemyGrid[i][j] = piece;
 					pieceLayer.add(piece);
 				}
 			}
@@ -423,13 +450,15 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 	}
 
 
-	// Creates a 9 x 8 array to store piece data
+	// Creates two 9 x 8 arrays to store piece data
 	// _ indicates empty spaces
 	function initializeGrid() {
 		for (var i = 0; i < 9; i++) {
 			gameGrid[i] = [];
+			enemyGrid[i] = [];
 			for (var j = 0; j < 8; j++) {
 				gameGrid[i][j] = '_';
+				enemyGrid[i][j] = "_";
 			}
 		}
 	}

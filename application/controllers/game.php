@@ -89,9 +89,6 @@ class Game_Controller extends Base_Controller{
 	public function action_get_enemy_grid(){
 		$id = Input::json();
 
-		// debug!
-		// $id = 7;
-
 		$player_number = Helper::get_player_number(Auth::user()->id, $id);
 
 		if($player_number == 1){
@@ -106,6 +103,44 @@ class Game_Controller extends Base_Controller{
 		$enemy_grid = Helper::anonymize($grid);
 		$enemy_grid = json_encode($enemy_grid);
 		return Response::json($enemy_grid);
+	}
+
+	/**
+	 *
+	 *
+	 *
+	 */
+	public function action_update_move(){
+		$package = Input::json();
+		$id = $package->id;
+		$x0 = $package->x0;
+		$y0 = $package->y0;
+		$x1 = $package->x1;
+		$y1 = $package->y1;
+		$piece = $package->piece;
+
+		// $id = 17;
+		$player_number = Helper::get_player_number(Auth::user()->id, $id);
+		$row = DB::table('games')->where_id($id)->first();	
+
+		// retrieve game grid for player from db, and grid of enemy
+		if($player_number == 1){ 
+			$grid = $row->p1_grid;
+			$enemy_grid = $row->p2_grid;
+		}
+		else{
+			$grid = $row->p2_grid;
+			$enemy_grid = $row->p1_grid;
+		}
+		$grid = json_decode($grid);
+		$enemy_grid = json_decode($enemy_grid);
+
+		// update game grid based on the changes listed
+		$grid[$x1][$y1] = $piece;
+		$grid[$x0][$y0] = "_";
+
+		// check for win condition (flag reaches other end)
+		// check for captures by comparing new grid with opponent's current grid
 	}
 
 	// return an array of 27 possible positions, shuffled
