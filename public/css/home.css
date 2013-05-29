@@ -1,0 +1,178 @@
+body{
+	background-image: url('images/back.png');
+	font-family: "Roboto", Verdana, sans-serif;
+}
+header{
+	width: 100%;
+	height: 15%;
+	background: #34495e;
+	color: white;
+}
+h1{
+	font-size: 300%;
+	margin:0;
+	letter-spacing: -3px;
+	padding: 20px;
+}
+b{
+	color: #e74c3c;
+}
+input{
+	display:inline;
+}
+input[type=text]{
+	width:100%;
+	font-family: "Roboto", Arial, sans-serif;
+	font-size: 12pt;
+	border: solid 1px transparent;
+	background: rgba(0,0,0,0.1);
+	color: white;
+}
+i{
+	font-variant: normal;
+	font-weight: 900;
+	color: #95a5a6;
+}
+header >i{
+	
+}
+.error{
+	color: #c0392b;
+	font-weight: bold;
+}
+.dialog{
+	font-family: "Roboto";
+	font-size: 0.8em;
+}
+.wrapper{
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	margin: 0px auto;
+	overflow: hidden;
+}
+.main{
+	position: relative;
+	height: 100%;
+}
+.module-container{
+	width: 100%;
+	height: 85%;
+}
+.module{
+	margin: 10px 8px 0px 0px;
+	text-align: center;
+	height: 100%;
+	border-top-left-radius: 10px;
+	border-top-right-radius: 10px;
+}
+.module-heading{
+	height: 13%;
+	font-family: "Roboto Slab", Arial, sans-serif;
+	text-align: center;
+	font-size: 2em;
+	color: white;
+	font-weight: bold;
+}
+.module-content{
+	position: relative;
+	font-size: 1.2em;
+	overflow: auto;
+	height: 85%;
+	background: rgba(0, 0, 0, 0.1);
+	color: #ecf0f1;
+}
+.column{
+	position: relative;
+	width: 50%;
+	height: 100%;
+	float: left;
+}
+.row{
+	height:50%;
+}
+.float-bar{
+	position:fixed;
+	right: 0;
+	top: -10px;
+	width: 30%;
+
+}
+.anchor{
+	cursor: pointer;
+	color:white;
+	position: relative;
+	padding: 20px;
+	width: 50%;
+	margin: 0 auto;
+	text-align: center;
+	vertical-align: middle;
+	border-bottom-left-radius: 35px;
+	border-bottom-right-radius: 35px;
+	box-shadow: 4px 4px 8px 1px #444;
+	border: solid 1px white;
+}
+.anchor:hover{
+	border: solid 1px yellow;
+}
+#create-invite{
+	background: #F1654C;
+}
+#logout{
+	background: #00B5B5;
+}
+#c3{
+	text-align: left;
+	padding-left: 1%;
+	width: 83%;
+}
+#c4{
+	position: relative;
+	left:1%;
+	width: 15%;
+}
+#r3{
+	height:10%;
+	width: 100%;
+}
+#online-players{
+	background: rgba(29, 90, 130, 1);
+}
+#current-games{
+	background: #943B00;
+}
+.module-input{
+	width: 100%;
+	height: 7%;
+}
+#chat-box{
+	width:100%;
+	height: 100%;
+	background: #0F705D;
+}
+#chat-window{
+	text-align: left;
+	padding: 0px 15px 0 15px;
+	height: 83%;
+	overflow:auto;
+	margin-bottom: 1%;
+	font-size: .9em;
+}
+#chat-title{
+	font-size: 2em;
+	height: 8%;
+}
+#chat-submit{
+	padding: 5px;
+	display: table-cell;
+	text-align: center;
+	background: rgba(0,0,0,0.1);
+	color: white;
+	font-weight: bolder;
+}
+#invite-choices{
+	text-align: center;
+}
+#content-games{
+	height: 78%;
+}

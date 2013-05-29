@@ -1,0 +1,1 @@
+jQuery(document).ready(function(e){function t(){e.get(BASE+"/lobby/get_status/"+game_id,function(e){if(e.status===2){window.location.href=BASE+"/game/play/"+game_id}})}e("#progressbar").progressbar({value:false});(function n(){setTimeout(function(){t();n()},2e3)})()})
