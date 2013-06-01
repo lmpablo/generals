@@ -178,6 +178,7 @@ window.onload = function () {
 		else{
 			generals.setMovement(false);
 			$("#message").html("<h6>The game has started!<br><br>Waiting for Player1 to start.<h6>");
+			generals.turnListener();
 		}		
 	}
 
@@ -190,7 +191,6 @@ window.onload = function () {
 		});		
 		timer = setTimeout(pollGameStart, 2000);
 	}
-
 
 	generals.loadImages(sources, function () {
 		generals.init();

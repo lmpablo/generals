@@ -16,6 +16,7 @@ class Create_Games {
 			$table->integer('p2')->unsigned();
 			$table->integer('status')->unsigned();
 			$table->integer('turn');
+			$table->integer('winner')->nullable();
 			$table->text('chat');
 			$table->string('p1_grid', 1200)->nullable();
 			$table->string('p2_grid', 1200)->nullable();

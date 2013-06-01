@@ -31,22 +31,21 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 	var stage, grid, pieceLayer, tooltipLayer, images,
 
 	// canvas constants
-		H_POS = 130,
-		V_POS = 90,
+		H_POS = 130,			// horizontal distance between the left side of each grid tile
+		V_POS = 90,				// vertical distance between the top of each grid tile
 		mult = ((WINDOW_HEIGHT + 30) / 955),
 		coordStartX = (((WINDOW_WIDTH / mult) - (H_POS * 9)) / 2),
 		coordStartY = (((WINDOW_HEIGHT / mult) - (V_POS * 8)) / 2),
-		BLK_SPACE = 4,
+		BLK_SPACE = 4, 			// spacing between grid tiles
 
 		// game variables
-		gameGrid = [],
-		enemyGrid = [],
-		playerPieces = [],
-		connected = false,
+		gameGrid = [],			// a 9x8 grid containing an object representation of each unit
+		enemyGrid = [],			// a 9x8 grid containing a canvas object of each enemy piece
+		playerPieces = [],		// an array of 21 corresponding to canvas object of each game unit
 		gameStarted = false,
 		startPositionX, startPositionY,
 		playerNumber = 0,
-		playerName = "",
+		playerName = USERNAME,
 		gamePieces=[{name:"Commander General",abbr:"5S",val:15},
 			{name:"General",abbr:"4S",val:14},
 			{name:"Lt. General",abbr:"3S",val:13},
@@ -63,6 +62,10 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 			{name:"Agent",abbr:"agt1",val:2},{name:"Agent",abbr:"agt2",val:2},
 			{name:"Flag",abbr:"flg",val:1}];
 
+	/**
+	 * Helper function to create each tile.
+	 * TODO: Implement caching. No use in drawing 72 individual tiles.
+	 */
 	function createTile(xPos, yPos, color, hoverColor) {
 		var rect = new Kinetic.Rect({
 			x: xPos,
@@ -197,6 +200,135 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 		return false;
 	}
 
+	/**
+	 * Iterates through every tile and checks its contents. If the old grid
+	 * is empty, but the grid is not, create an enemy piece and place it on 
+	 * that tile. Conversely, if the tile used to have something and is now 
+	 * empty, destroy that piece.
+	 */
+	function refreshEnemyGrid(matrix){
+		for (var i = 0; i < 9; i++){
+			for (var j = 0; j < 8; j++){
+				// if grid position is not empty anymore
+				var oldPiece = enemyGrid[i][j],
+					newPiece = matrix[i][j];
+
+				if(oldPiece != "_" && newPiece === "_"){
+					oldPiece.destroy();
+					enemyGrid[i][j] = "_";
+				}
+				else if(oldPiece === "_" && newPiece === "*"){
+					xPos = coordStartX + (i * H_POS) + (H_POS / 2);
+					yPos = coordStartY + (j * V_POS) + (V_POS / 2);
+
+					piece = createEnemyPieces(xPos, yPos);
+					pieceLayer.add(piece);
+					enemyGrid[i][j] = piece;
+				}
+			}
+		}
+		pieceLayer.draw();
+	}
+
+	/**
+	 * Redraws player's grid at the BEGINNING(pre) of the turn. Only modifies the 
+	 * board in the case that there as been a captured piece after opponent's
+	 * last move. 
+	 * (Any movement or captures that occurred during the user's move is updated
+	 *  after user's turn.)
+	 *
+	 */
+	function refreshOwnGrid(matrix){
+		console.log(typeof(matrix));
+		for(var i = 0; i < 9; i++){
+			for(var j = 0; j < 8; j++){
+				if(gameGrid[i][j] != "_" && matrix[i][j] === "_"){
+					removePiece("self", i, j);
+					gameGrid[i][j] = "_";
+				}
+			}
+		}		
+		pieceLayer.draw();
+	}
+
+	/**
+	 * Wait every 2 seconds to check if its player's turn yet. When it is,
+	 * stop looping, refresh both grids, and allow movement. Lastly, check
+	 * if there is a listed winner yet, if so, alert the player who it is.
+	 */
+	function turnListener(){
+		$.get(BASE + '/game/listen_turn/' + game_id, function(data){
+			if(data === "true"){
+				clearTimeout(listenerTimer);
+				
+				var pkg = game_id;
+				json = JSON.stringify(pkg);
+							
+				// update my grid
+				$.post(BASE + '/game/get_player_grid', json, function(data){
+					refreshOwnGrid(JSON.parse(data));
+				});
+
+				// update enemy grid
+				$.post(BASE + '/game/get_enemy_grid/', json, function(data){
+					refreshEnemyGrid(JSON.parse(data));
+					generals.setMovement(true);
+
+					// check for win condition
+					$.get(BASE + '/game/get_winner/' + game_id, function(data){
+						if(data === 1 || data === 2){
+							if(data === playerNumber){
+								alert("You win!");
+							}
+							else{
+								alert("You lost!");
+							}
+						}
+					});
+				});				
+			}
+		});		
+		listenerTimer = setTimeout(turnListener, 2000);
+	}
+
+	/**
+	 * Tell server player's turn is done, opponent's turn now.
+	 */
+	function toggleTurn(){
+		var pkg = new Object();
+		pkg.id = game_id;
+
+		json = JSON.stringify(pkg);
+
+		$.post(BASE + '/game/toggle_turn/', json, function(data){
+			// wait for the next turn change
+			turnListener();
+		});
+	}
+
+	/**
+	 * Removes a game piece from either grid at [x, y] by calling the
+	 * polygon's destroy() function.
+	 */
+	function removePiece(owner, x, y){
+		if(owner === "self"){
+			var piece = gameGrid[x][y];
+			var index = gamePieces.indexOf(piece);
+			
+			// Make sure to set it offscreen first before calling destroy.
+			// Otherwise, [x,y] position stays, causing conflicts with collision
+			// checking on dragEnd event of the polygon.
+			// Not necessary for enemy grid as there is no collision checking locally.
+			playerPieces[index].setPosition(-50, -50);
+			playerPieces[index].destroy();
+		}
+		else{
+			var piece = enemyGrid[x][y];
+			piece.destroy();
+		}
+		pieceLayer.draw();
+	}
+
 	function createPiece(filename, rank) {
 		var trans = null,
 			startX, startY, newX, newY, textWidth,
@@ -206,6 +338,8 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 				fill: 'black',
 				visible: false
 			}),
+			// creates a label for each piece.
+			// TODO: Find a different way to represent this
 			label = new Kinetic.Text({
 				text: rank,
 				fontFamily: 'Calibri',
@@ -373,16 +507,54 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 					pkg.y1 = pkg.y0 - 1; 
 				}
 				
+
 				// update enemy's grid
 				var json = JSON.stringify(pkg);
+				var is_winner = null;
 
 				// send the changes to the server
 				// check the callback if there was a capture/win-condition is met
-				$.post(BASE + '/game/update_move', json, function(data){
-					console.log(data);
+				$.post(BASE + '/game/update_move', json, function(code){
+					console.log(code);
+					// check controller return codes for reference
+					// if code === 0, do nothing at all
+					if(code === 1 || code === 4){
+						removePiece("opponent", pkg.x1, pkg.y1);
+						enemyGrid[pkg.x1][pkg.y1] = "_";
+
+						if(code === 4){
+							is_winner = true;
+						}
+					}
+					else if(code === 2 || code === 5){
+						removePiece("self", pkg.x1, pkg.y1);
+						gameGrid[pkg.x1][pkg.y1] = "_";
+						
+						if(code === 5){
+							is_winner = false;
+						}
+					}
+					else if(code === 3){
+						is_winner = true;
+					}
+					else if(code === 6){
+						removePiece("self", pkg.x1, pkg.y1);
+						removePiece("opponent", pkg.x1, pkg.y1);
+						
+						gameGrid[pkg.x1][pkg.y1] = "_";
+						enemyGrid[pkg.x1][pkg.y1] = "_";
+					}
+					toggleTurn();
+					if(is_winner != null){
+						if(is_winner){
+							alert("You are win!");
+						}
+						else{
+							alert("You are disappoint!");
+						}
+					}
 				});
 			}
-
 			tooltipLayer.draw();
 			pieceLayer.draw();
 		});
@@ -407,8 +579,8 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 
 			rank = gamePieces[i];
 			temp = createPiece(title, rank.name);
-			pieceLayer.add(temp.piece);
-			playerPieces.push(temp.piece);
+			pieceLayer.add(temp.piece);			// add to layer
+			playerPieces.push(temp.piece);		// add to list of player pieces for indexing
 
 			tooltipLayer.add(temp.placeholder);
 			tooltipLayer.add(temp.label);
@@ -431,6 +603,12 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 		return piece;
 	}
 
+
+	/**
+	 * Initial function called to draw all enemy pieces
+	 * in their initial positions. The game pieces (canvas objects)
+	 * are stored directly in the grid for convenience.
+	 */
 	function drawEnemyPieces(matrix) {
 		var i, j, xPos, yPos, piece;
 		for (i = 0; i < 9; i++) {
@@ -556,7 +734,6 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 	}
 
 	return {
-		connected: connected,
 		gameStarted: gameStarted,
 		playerNumber: playerNumber,
 		playerName: playerName,
@@ -567,6 +744,7 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 		resetBounds: resetDragBounds,
 		drawEnemyPieces: drawEnemyPieces,
 		positionToGrid: positionToGrid,
+		turnListener: turnListener,
 		init: function () {
 			stage = new Kinetic.Stage({
 				container: 'container',
@@ -587,10 +765,6 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 			stage.add(pieceLayer);
 			stage.add(tooltipLayer);
 		},
-		forceRedraw: function () {
-			grid.draw();
-			pieceLayer.draw();
-		},
 		clearAll: function () {
 			stage.clear();
 		},
@@ -598,94 +772,6 @@ var generals = (function (WINDOW_HEIGHT, WINDOW_WIDTH) {
 			for (var i = 0; i < 21; i++) {
 				if (playerPieces[i] !== null){ playerPieces[i].setDraggable(val); }
 			}
-		},
-		updateEnemyPositions: function (data) {
-			console.log("**enter updateEnemyPositions**");
-			console.log(gameGrid);
-			var newX = coordStartX + (H_POS * data.newX) + (H_POS / 2),
-				newY = coordStartY + (V_POS * data.newY) + (V_POS / 2),
-				existingPiece;
-			
-			existingPiece = gameGrid[data.x][data.y];
-			
-			gameGrid[data.x][data.y] = "_";
-			gameGrid[data.newX][data.newY] = existingPiece;
-			existingPiece.setPosition(newX, newY);
-			pieceLayer.draw();
-			console.log(gameGrid);
-			console.log("**exit updateEnemyPositions**");
-		},
-		// similar to removePiece, but on challengee side.
-		eliminatePieces: function (data) {
-			console.log("**enter eliminatePieces**");
-			console.log(gameGrid);
-			// remove enemy unit
-			var piece = gameGrid[data.x][data.y], index;
-			piece.destroy();
-			gameGrid[data.x][data.y] = "_";
-			
-			// remove unit
-			piece = gameGrid[data.newX][data.newY];
-			gameGrid[data.newX][data.newY] = "_";
-			index = gamePieces.indexOf(piece);
-			playerPieces[index].destroy();
-			playerPieces[index].setPosition(-50, -50);
-			pieceLayer.draw();
-			console.log(gameGrid);
-			console.log("**exit eliminatePieces**");
-		},
-		// made specifically to delete two pieces from the same spot
-		removePieces: function (x, y) {
-			console.log("**enter removePieces**");
-			console.log(gameGrid);
-			var piece, pos, numberOfPieces, index;
-			piece = gameGrid[x][y];
-			index = gamePieces.indexOf(piece);
-			playerPieces[index].destroy();
-			playerPieces[index].setPosition(-50, -50);
-			gameGrid[x][y] = "_";
-
-			numberOfPieces = pieceLayer.children.length;
-			// remove opponent unit
-			x = coordStartX + (x * H_POS) + (H_POS/2);
-			y = coordStartY + (y * V_POS) + (V_POS/2);
-			for(var i = 0; i < numberOfPieces; i++){
-				if (pieceLayer.children[i] !== null){
-					pos = pieceLayer.children[i].getPosition();
-					if((pos.x == x) && (pos.y == y)){
-						pieceLayer.children[i].destroy();
-						numberOfPieces -= 1;
-					}
-				}
-			}
-			pieceLayer.draw();
-			console.log(gameGrid);
-			console.log("**exit removePieces**");
-		},
-		// made to delete one specific unit from a tile
-		removeLoser: function (x, y, loser) {
-			console.log("**enter removeLoser**");
-			console.log(gameGrid);
-			var piece, pos, index = gamePieces.indexOf(gameGrid[x][y]), playerPiece = playerPieces[index], 
-				numberOfPieces;
-			numberOfPieces = pieceLayer.children.length;
-			if (loser === "self"){
-				playerPieces[index].setPosition(-50, -50);
-				playerPiece.destroy();
-			}
-			else{
-				x = coordStartX + (x * H_POS) + (H_POS/2);
-				y = coordStartY + (y * V_POS) + (V_POS/2);
-				for(var i = 0; i < numberOfPieces - 1; i++){
-					pos = pieceLayer.children[i].getPosition();
-					if((pieceLayer.children[i] != playerPiece) && (pos.x == x) && (pos.y == y)){
-						pieceLayer.children[i].destroy();
-					}
-				}
-			}
-			pieceLayer.draw();
-			console.log(gameGrid);
-			console.log("**exit removeLoser**");
-		}	
+		}
 	};
 })(window.innerHeight - 30, window.innerWidth - 20);

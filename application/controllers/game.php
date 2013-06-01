@@ -20,7 +20,6 @@ class Game_Controller extends Base_Controller{
 	/**
 	 * Serves the main game board.
 	 * First it assigns a player number for the user, then serves the page.
-	 *
 	 */
 	public function action_play($id){
 		$player_number = Helper::get_player_number(Auth::user()->id, $id);
@@ -106,9 +105,37 @@ class Game_Controller extends Base_Controller{
 	}
 
 	/**
+	 * Retrieves the player grid from db.
+	 */
+	public function action_get_player_grid(){
+		$id = Input::json();
+		$player_number = Helper::get_player_number(Auth::user()->id, $id);
+
+		if($player_number == 1){
+			$grid = DB::table('games')->where_id($id)->first()->p1_grid;
+		}
+		else{
+			$grid = DB::table('games')->where_id($id)->first()->p2_grid;
+		}
+		
+		// since no manipulation is being done on the grid, just straight retrieval,
+		// don't bother encoding or decoding it -- already in json
+		return Response::json($grid);
+	}
+
+	/**
+	 * After every move, this function is called to check the effects
+	 * of the most recent move. It will return one of the return codes below
+	 * and the client should act accordingly.
 	 *
-	 *
-	 *
+	 * VALID RETURN CODES:
+	 * 0 - no collision, no winning conditions met
+	 * 1 - collision: player won, no winning conditions met
+	 * 2 - collision: opponent won, no winning conditions met
+	 * 3 - no collision, winning condition met (player reached the other side)
+	 * 4 - collision: player won, winning conditions met (player won, captured flag)
+	 * 5 - collision: opponent won, winning conditions met (player lost, flag captured);
+	 * 6 - collision: draw, no winning conditions (equal valued units)
 	 */
 	public function action_update_move(){
 		$package = Input::json();
@@ -119,28 +146,175 @@ class Game_Controller extends Base_Controller{
 		$y1 = $package->y1;
 		$piece = $package->piece;
 
+		$winner = 0;
+		$condition = 0;
+		$opp_modified = false;
+
 		// $id = 17;
 		$player_number = Helper::get_player_number(Auth::user()->id, $id);
 		$row = DB::table('games')->where_id($id)->first();	
 
-		// retrieve game grid for player from db, and grid of enemy
+		// retrieve game grid for player from db, and grid of opponent
 		if($player_number == 1){ 
 			$grid = $row->p1_grid;
-			$enemy_grid = $row->p2_grid;
+			$opp_grid = $row->p2_grid;
 		}
 		else{
 			$grid = $row->p2_grid;
-			$enemy_grid = $row->p1_grid;
+			$opp_grid = $row->p1_grid;
 		}
+		// json to array
 		$grid = json_decode($grid);
-		$enemy_grid = json_decode($enemy_grid);
+		$opp_grid = json_decode($opp_grid);
+
 
 		// update game grid based on the changes listed
 		$grid[$x1][$y1] = $piece;
 		$grid[$x0][$y0] = "_";
 
-		// check for win condition (flag reaches other end)
-		// check for captures by comparing new grid with opponent's current grid
+		$collision = GameHelper::check_grid_collision($grid, $opp_grid, $x1, $y1);
+
+		$challenger = $grid[$x1][$y1];
+
+		// for use with database update
+		if($player_number == 1){ 
+			$player_grid = "p1_grid";
+			$other_grid = "p2_grid";
+		}
+		else{
+			$player_grid = "p2_grid";
+			$other_grid = "p1_grid";
+		}
+
+		if($collision){
+			// find out who won the collision
+			// 0 - draw; 1 - challenger; 2 - opponent
+			$winner = GameHelper::do_capture($challenger, $opp_grid[$x1][$y1]);
+
+			// check if winning condition met
+			if($winner == 0){
+				if($opp_grid[$x1][$y1]->val == 1 || $grid[$x1][$y1]->val == 1){
+					$condition = 4; // code 4 -- captured enemy flag, win
+
+					$opp_grid[$x1][$y1] = "_";
+					$opp_grid = json_encode($opp_grid);
+					$opp_modified = true;
+
+					DB::table('games')->where_id($id)->update(array('winner' => $player_number));
+				}
+				else{
+					$condition = 6; // code 6 -- draw, both captured
+					$grid[$x1][$y1] = "_";
+					
+					$opp_grid[$x1][$y1] = "_";
+					$opp_grid = json_encode($opp_grid);
+					$opp_modified = true;
+				}
+			}
+			else{
+				if($opp_grid[$x1][$y1]->val == 1 || $grid[$x1][$y1]->val == 1){
+					$condition = 3; // code 4 -- captured enemy flag
+
+					$opp_grid[$x1][$y1] = "_";
+					$opp_grid = json_encode($opp_grid);
+					$opp_modified = true;
+
+					DB::table('games')->where_id($id)->update(array('winner' => $player_number));
+				}
+				else{
+					$condition = 0; // code 1 or 2 -- regular capture, no win
+
+					// challenger won
+					if($winner == 1){
+						$opp_grid[$x1][$y1] = "_";
+						$opp_grid = json_encode($opp_grid);
+						$opp_modified = true;
+					}
+					// challenger lost
+					else{
+						$grid[$x1][$y1] = "_";
+					}
+				}
+			}
+		}
+		else{
+			// check if winning condition met without collision
+			// if player1, flag must reach row 7, if player2, must reach row 0
+
+			if($challenger->val == 1){
+
+				if($player_number == 1){
+					if($y1 == 7){
+						$condition = 3; // code 3 -- flag reached opposite end (p1)
+
+						DB::table('games')->where_id($id)->update(array('winner' => $player_number));
+					}
+					else{
+						$condition = 0; // code 0 -- nothing happened
+					}
+				}
+				else{
+					if($y1 == 0){
+						$condition = 3; // code 3 -- flag reached opposite end (p2)
+						DB::table('games')->where_id($id)->update(array('winner' => $player_number));
+					}
+					else{
+						$condition = 0; // code 0 -- nothing happened
+					}
+				}
+			} 
+			else{
+				$condition = 0; // code 0 -- nothing happened
+			}
+		}
+		$grid = json_encode($grid);
+
+		DB::table('games')->where_id($id)->update(array($player_grid => $grid));
+		if($opp_modified){
+			DB::table('games')->where_id($id)->update(array($other_grid => $opp_grid));
+		}
+
+		// see return codes
+		return Response::json($winner + $condition);
+	}
+
+	// Toggles the turn; switches from p1 <-> p2
+	public function action_toggle_turn(){
+		$package = Input::json();
+		$id = $package->id;
+
+		$player_number = Helper::get_player_number(Auth::user()->id, $id);
+
+		if($player_number == 1){
+			$turn = 2;
+		}
+		else{
+			$turn = 1;
+		}
+		DB::table('games')->where_id($id)->update(array('turn' => $turn));
+	}
+
+	/**
+	 * Queries the db for winner in the current game.
+	 */
+	public function action_get_winner($id){
+		$winner = DB::table('games')->where_id($id)->first()->winner;
+
+		return Response::json($winner);
+	}
+
+	// Listen if it is clients turn
+	public function action_listen_turn($id){
+		$player_number = Helper::get_player_number(Auth::user()->id, $id);
+		$game = DB::table('games')->where_id($id)->first();
+
+		if($game->turn == $player_number){
+			return Response::json("true");
+		}
+		else{
+			return Response::json("false");
+		}
+
 	}
 
 	// return an array of 27 possible positions, shuffled
@@ -155,18 +329,5 @@ class Game_Controller extends Base_Controller{
 			->first();
 		$turn = $game->turn;
 		return Response::json($turn);
-	}
-
-
-	// DELETE!
-	public function action_test_grid($id){
-		$table = array();
-		for($i = 0; $i < 9; $i++){
-			for($j = 0; $j < 8; $j++){
-				$table[$i][$j] = array('a' => $i . $j, 'b' => $j . $i);
-			}
-		}
-		return json_encode($table);
-		
 	}
 }

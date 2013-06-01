@@ -1,4 +1,4 @@
-<phpunit colors="true"
+<phpunit colors="false"
          bootstrap="{{bootstrap}}"
          backupGlobals="false">
 	<testsuites>
