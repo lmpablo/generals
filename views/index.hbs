@@ -1,0 +1,10 @@
+<h1>{{title}}</h1>
+<p>Welcome to {{title}}</p>
+
+<script src="javascripts/vendor/socket.io.js"></script>
+<script>
+    var socket = io();
+    socket.on('test', function(data){
+        console.log(data);
+    })
+</script>
