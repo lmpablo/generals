@@ -1,0 +1,54 @@
+<h1>Sign Up Page</h1>
+
+<p id="error"></p>
+<form>
+    <label>
+        username <input type="text" id="username"/>
+    </label><br/>
+    <label>
+        password <input type="password" id="password"/>
+    </label><br/>
+    <label>
+        password confirm <input type="password" id="password-confirm"/>
+    </label>
+    <button id="submit">Sign Me Up</button>
+</form>
+<script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script>
+    $(function(){
+        $("#submit").on('click', function(e){
+            var username = $("#username").val();
+            var password = $("#password").val();
+            var passwordConfirm = $("#password-confirm").val();
+            var csrf = "{{ csrf }}";
+
+            $.ajax({
+                type: "POST",
+                url: "/accounts/signup",
+                data: {
+                    username: username,
+                    password: password,
+                    passwordConfirm: passwordConfirm,
+                    _csrf: csrf
+                },
+                success: function(res) {
+                    console.log(res);
+                    var success = res.success;
+
+                    if (success) {
+                        window.location.replace('/?signup=success');
+                    }
+                },
+                error: function(res) {
+                    var success = res.responseJSON.success;
+                    var message = res.responseJSON.message;
+
+                    if (!success) {
+                        $("#error").text(message);
+                    }
+                }
+            });
+            e.preventDefault();
+        });
+    });
+</script>

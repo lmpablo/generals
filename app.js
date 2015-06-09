@@ -13,6 +13,7 @@ var db = monk('localhost:27017/test');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
+var accounts = require('./routes/accounts');
 
 var app = express();
 
@@ -28,10 +29,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(session({
   secret: 'G4m30F7H3G3ner4L$',
-  cookie: {
-    httpOnly: true,
-    secure: true
-  }
+  cookie: false
 }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(csrf());
@@ -44,6 +42,7 @@ app.use(function(req,res,next){
 
 app.use('/', routes);
 app.use('/users', users);
+app.use('/accounts', accounts);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
