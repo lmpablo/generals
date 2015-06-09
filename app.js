@@ -4,6 +4,8 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var csrf = require('csurf');
+var session = require('express-session');
 
 var mongo = require('mongodb');
 var monk = require('monk');
@@ -24,7 +26,15 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(session({
+  secret: 'G4m30F7H3G3ner4L$',
+  cookie: {
+    httpOnly: true,
+    secure: true
+  }
+}));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(csrf());
 
 // Make our db accessible to our router
 app.use(function(req,res,next){
