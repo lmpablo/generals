@@ -1,20 +1,26 @@
 <h1>Sign Up Page</h1>
 
+{{#if message }}
+    <code>{{message}}</code>
+{{/if}}
+
 <p id="error"></p>
-<form>
+<form method="POST" action="/signup">
     <label>
-        username <input type="text" id="username"/>
+        username <input type="text" id="username" name="username"/>
     </label><br/>
     <label>
-        password <input type="password" id="password"/>
+        password <input type="password" id="password" name="password"/>
     </label><br/>
     <label>
-        password confirm <input type="password" id="password-confirm"/>
+        password confirm <input type="password" id="passwordConfirm" name="passwordConfirm"/>
     </label>
+    <input type="hidden" name="_csrf" id="_csrf" value="{{ csrf }}"/>
     <button id="submit">Sign Me Up</button>
 </form>
 <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
 <script>
+    /**
     $(function(){
         $("#submit").on('click', function(e){
             var username = $("#username").val();
@@ -24,7 +30,7 @@
 
             $.ajax({
                 type: "POST",
-                url: "/accounts/signup",
+                url: "/signup",
                 data: {
                     username: username,
                     password: password,
@@ -33,22 +39,14 @@
                 },
                 success: function(res) {
                     console.log(res);
-                    var success = res.success;
-
-                    if (success) {
-                        window.location.replace('/?signup=success');
-                    }
+                    window.location.replace('/?signup=success');
                 },
                 error: function(res) {
-                    var success = res.responseJSON.success;
-                    var message = res.responseJSON.message;
+                    console.log(res);
 
-                    if (!success) {
-                        $("#error").text(message);
-                    }
                 }
             });
             e.preventDefault();
         });
-    });
+    });**/
 </script>
