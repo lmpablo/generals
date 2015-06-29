@@ -45,6 +45,7 @@ describe("Arbiter", function(){
         expect(arbiter.decideCapture(priv, new Piece(pieces.ARMY_GEN))).to.equal(cc.CAPTIVE_W);
         expect(arbiter.decideCapture(priv, priv)).to.equal(cc.DRAW);
         expect(arbiter.decideCapture(new Piece(pieces.SERGEANT), priv)).to.equal(cc.CAPTOR_W);
+        expect(arbiter.decideCapture(new Piece(pieces.FLAG), priv)).to.equal(cc.CAPTIVE_W_G);
     });
 
     it("should dispute FLAG captures", function(){
