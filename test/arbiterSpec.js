@@ -23,16 +23,16 @@ describe("Arbiter", function(){
         expect(arbiter.decideCapture(armyGen, armyGen)).to.equal(cc.DRAW);
     });
 
-    it("should dispute SPY-PRIVATE captures", function(){
-        var spy = new Piece(pieces.SPY);
+    it("should dispute AGENT-PRIVATE captures", function(){
+        var spy = new Piece(pieces.AGENT);
         var priv = new Piece(pieces.PRIVATE);
 
         expect(arbiter.decideCapture(spy, priv)).to.equal(cc.CAPTIVE_W);
         expect(arbiter.decideCapture(priv, spy)).to.equal(cc.CAPTOR_W);
     });
 
-    it("should dispute SPY-??? captures", function(){
-        var spy = new Piece(pieces.SPY);
+    it("should dispute AGENT-??? captures", function(){
+        var spy = new Piece(pieces.AGENT);
 
         expect(arbiter.decideCapture(spy, new Piece(pieces.ARMY_GEN))).to.equal(cc.CAPTOR_W);
         expect(arbiter.decideCapture(new Piece(pieces.MAJOR_GEN), spy)).to.equal(cc.CAPTIVE_W);
@@ -52,7 +52,7 @@ describe("Arbiter", function(){
         var flag = new Piece(pieces.FLAG);
 
         expect(arbiter.decideCapture(new Piece(pieces.PRIVATE), flag)).to.equal(cc.CAPTOR_W_G);
-        expect(arbiter.decideCapture(new Piece(pieces.SPY), flag)).to.equal(cc.CAPTOR_W_G);
+        expect(arbiter.decideCapture(new Piece(pieces.AGENT), flag)).to.equal(cc.CAPTOR_W_G);
         expect(arbiter.decideCapture(flag, flag)).to.equal(cc.CAPTOR_W_G);
         expect(arbiter.decideCapture(flag, new Piece(pieces.GEN))).to.equal(cc.CAPTIVE_W_G);
     });
