@@ -11,6 +11,8 @@ var passport = require('passport');
 
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
+var redis = require('redis');
+var redisClient = redis.createClient();
 
 var configDB = require('./config/database.js');
 var db = mongoose.connect(configDB.url);
@@ -34,6 +36,16 @@ app.use(session({
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(csrf());
 app.use(flash());
+
+// init redis
+redisClient.on('connect', function(){
+  console.log("Redis connected!");
+  app.set('redis', redisClient);
+}).on('error', function(err){
+  console.log("Error connecting to Redis: " + err);
+}).on('ready', function(){
+  console.log("Redis Client ready!");
+});
 
 // passport
 require('./config/passport')(passport);
